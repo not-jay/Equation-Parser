@@ -5,6 +5,22 @@ public class Equation {
 	private String equation = "";
 	private String backup = "";
 	
+	private String[] trigFunctions = {"sin", "cos", "tan", "asin", "acos", "atan", "sinh", "cosh", "tanh", "sqrt", "cbrt"};
+	//I know sqrt/cbrt isn't a trigonometric function, but with how the program flows, it's best to break it down here
+	//with the rest of the trig functions. Same goes for the hyperbolic functions
+	
+	private static final int SIN = 0;
+	private static final int COS = 1;
+	private static final int TAN = 2;
+	private static final int ASIN = 3;
+	private static final int ACOS = 4;
+	private static final int ATAN = 5;
+	private static final int SINH = 6;
+	private static final int COSH = 7;
+	private static final int TANH = 8;
+	private static final int SQRT = 9;
+	private static final int CBRT = 10;
+	
 	public static Equation createEquation(String eqn) {
 		return new Equation().setEqn(eqn);
 	}
@@ -15,8 +31,13 @@ public class Equation {
 	}
 	
 	public boolean containsVariables() {
-		if(equation.replaceAll("[a-z]", "VARIABLE!").contains("VARIABLE!")) return true;
-		return false;
+		for(String functions : trigFunctions) {
+			equation = equation.replace(functions, "TRIGO!");
+		}
+		boolean vars = equation.replaceAll("[a-z]", "VARIABLE!").contains("VARIABLE!");
+		equation = backup;
+		
+		return vars;
 	}
 	
 	//The parsing is split into three parts
@@ -24,7 +45,9 @@ public class Equation {
 	//It takes the inner most sub-equation and parses it
 	public float parseEqn(float startingValue) {
 		float ans = 0;
-		equation = backup = parseTrigFunctions();
+		
+		equation = backup;
+		equation = parseTrigFunctions(startingValue);
 		
 		int open = countChars(equation, '(');
 		int close = countChars(equation, ')');
@@ -157,20 +180,78 @@ public class Equation {
 	}
 	
 	//Processes trigonometric functions and sq and cb roots before everything else.
-	private String parseTrigFunctions() {
-		String newEquation = equation;
-		String[] trigFunctions = {"sin", "cos", "tan", "asin", "acos", "atan", "sinh", "cosh", "tanh", "sqrt", "cbrt"};
-		//I know sqrt/cbrt isn't a trigonometric function, but with how the program flows, it's best to break it down here
-		//with the rest of the trig functions
+	private String parseTrigFunctions(float value) {
+		String newEquation = backup;
 		
 		for(String function : trigFunctions) {
-			int first = newEquation.lastIndexOf(function+"(")+1;
-			int second = newEquation.indexOf(")", first);
-			String temp = newEquation.substring(first, second);
-			//TODO continue this thing here
+			if(!newEquation.contains(function)) continue;
+			
+			while(newEquation.contains(function)) {
+				int first = newEquation.lastIndexOf(function+"(")+1+function.length();
+				int second = newEquation.indexOf(")", first);
+				String temp = newEquation.substring(first, second);
+				Equation tempEqn = Equation.createEquation(temp);
+				tempEqn = Equation.createEquation(function+"("+String.valueOf(tempEqn.parseEqn(value))+")");
+				newEquation = newEquation.replace(function+"("+temp+")", String.valueOf(tempEqn.parseTrig()));
+			}
 		}
 		
 		return newEquation;
+	}
+	
+	private float parseTrig() {
+		float ans = 0;
+		int x = 0;
+		
+		for(String function : trigFunctions) {
+			if(!equation.contains(function)) {
+				x++;
+				continue;
+			}
+			
+			String temp = equation.substring(equation.indexOf('(')+1, equation.indexOf(')'));
+			float value = Float.parseFloat(temp);
+			
+			switch(x) {
+				case SIN:
+					ans = (float)Math.sin(Math.toRadians(value));
+					break;
+				case COS:
+					ans = (float)Math.cos(Math.toRadians(value));
+					break;
+				case TAN:
+					ans = (float)Math.tan(Math.toRadians(value));
+					break;
+				case ASIN:
+					ans = (float)Math.asin(Math.toRadians(value));
+					break;
+				case ACOS:
+					ans = (float)Math.acos(Math.toRadians(value));
+					break;
+				case ATAN:
+					ans = (float)Math.atan(Math.toRadians(value));
+					break;
+				case SINH:
+					ans = (float)Math.sinh(Math.toRadians(value));
+					break;
+				case COSH:
+					ans = (float)Math.cosh(Math.toRadians(value));
+					break;
+				case TANH:
+					ans = (float)Math.tanh(Math.toRadians(value));
+					break;
+				case SQRT:
+					ans = (float)Math.sqrt(value);
+					break;
+				case CBRT:
+					ans = (float)Math.cbrt(value);
+					break;
+			}
+			
+			x++;
+		}
+		
+		return ans;
 	}
 	
 	private String padOperators(String array) {
@@ -229,6 +310,7 @@ public class Equation {
 		return pos;
 	}
 	
+	@SuppressWarnings("unused")
 	private int countChars(String str, String chars) {
 		return countChars(str, chars.toCharArray());
 	}
@@ -250,6 +332,11 @@ public class Equation {
 		}
 		
 		return count;
+	}
+	
+	@Override
+	public String toString() {
+		return equation;
 	}
 	
 }
